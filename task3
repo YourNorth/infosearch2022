@@ -1,0 +1,49 @@
+import nltk
+nltk.download('punkt')
+import pymorphy2
+import re
+
+morph = pymorphy2.MorphAnalyzer()
+# Список исключаемых частей речи
+invalid_poses = ['CONJ', 'PREP']
+# Итоговый список токенов
+token_dict = dict()
+
+for i in range(0,100,1) :
+  file_name = 'выкачка' + str(i) + ".txt"
+  with open(file_name, 'rt') as file:
+        data = file.read()
+        # Разделить текст на слова
+        page_tokens = nltk.word_tokenize(data.lower())
+        # Отфильтровать слова по языку
+        pattern = "[а-яА-Я]+"
+        filtered_tokens = [x for x in page_tokens if re.match(pattern, x)]
+        # Дополнить имеющиеся токены
+        for token in filtered_tokens:
+            parsed_token = morph.parse(token)[0]
+            if parsed_token.tag.POS and parsed_token.tag.POS not in invalid_poses:
+                if token not in token_dict.keys():
+                    token_dict[token] = [str(i)]
+                else:
+                    token_dict[token].append(str(i))
+# Получить словарь - лемма : cписок тоекнов
+lemma_mapping = dict()
+for token in token_dict.keys():
+    parsed_token = morph.parse(token)[0]
+    # Взять нормальнцую форму слова
+    token_lemma = parsed_token.normal_form
+    # Добавить токен в словарь
+    if token_lemma not in lemma_mapping.keys():
+        lemma_mapping[token_lemma] = [token]
+    else:
+        lemma_mapping[token_lemma].append(token)
+
+# Сохранить индексы
+with open('indexes.txt', mode='w', encoding='utf-8') as indexes:
+    for key, values in lemma_mapping.items():
+        docs = []
+        for value in values:
+            docs = docs + token_dict[value]
+        print(set(docs))
+        print(f'{key} {" ".join(set(docs))}\n')
+        indexes.write(f'{key} {" ".join(set(docs))}\n')
