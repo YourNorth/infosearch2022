@@ -1,0 +1,48 @@
+import nltk
+nltk.download('punkt')
+import pymorphy2
+import re
+
+morph = pymorphy2.MorphAnalyzer()
+# Список исключаемых частей речи
+invalid_poses = ['CONJ', 'PREP']
+# Итоговый список токенов
+cleaned_tokens = []
+
+for i in range(0,100,1) :
+  file_name = 'выкачка' + str(i) + ".txt"
+  with open(file_name, 'rt') as file:
+        data = file.read()
+        # Разделить текст на слова
+        page_tokens = nltk.word_tokenize(data.lower())
+        # Отфильтровать слова по языку
+        pattern = "[а-яА-Я]+"
+        filtered_tokens = [x for x in page_tokens if re.match(pattern, x)]
+        # Дополнить имеющиеся токены
+        for token in filtered_tokens:
+            parsed_token = morph.parse(token)[0]
+            if parsed_token.tag.POS and parsed_token.tag.POS not in invalid_poses:
+                cleaned_tokens.append(token)
+
+# Сет токенов - избавление от дубликатов
+tokens_set = set(cleaned_tokens)
+# Записать токены в файл tokens.txt
+with open('tokens.txt', mode='w', encoding='utf-8') as tokens:
+    for token in tokens_set:
+        tokens.write(token + '\n')
+# Получить словарь - лемма : cписок тоекнов
+lemma_mapping = dict()
+for token in tokens_set:
+    parsed_token = morph.parse(token)[0]
+    # Взять нормальную форму токена
+    token_lemma = parsed_token.normal_form
+    # Добавить токен в словарь
+    if token_lemma not in lemma_mapping.keys():
+        lemma_mapping[token_lemma] = [token]
+    else:
+        lemma_mapping[token_lemma].append(token)
+
+# Записать леммы
+with open('lemmas.txt', mode='w', encoding='utf-8') as lemmas:
+    for key, values in lemma_mapping.items():
+        lemmas.write(f'{key}: {" ".join(values)}\n')
